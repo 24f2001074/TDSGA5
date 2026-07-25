@@ -7,7 +7,9 @@ app = FastAPI(
 )
 
 app.include_router(proration_router)
+from guardrail import router as guard_router
 
+app.include_router(guard_router)
 
 @app.get("/")
 def root():
