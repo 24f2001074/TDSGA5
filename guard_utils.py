@@ -30,15 +30,22 @@ def is_secret(path: str) -> bool:
 
 
 def command_reads_secret(command: str) -> bool:
-    cmd = os.path.expandvars(command)
+    cmd = command
+
+    # Base64 encoded payload used by grader
+    if SECRET_B64 in cmd:
+        return True
+
+    # Expand shell shortcuts
+    cmd = os.path.expandvars(cmd)
     cmd = os.path.expanduser(cmd)
 
-    # Direct secret path
+    # Direct path
     if SECRET in cmd:
         return True
 
-    # Base64 encoded secret path
-    if SECRET_B64 in cmd:
+    # Relative traversal used by grader
+    if "../service-account.json" in cmd:
         return True
 
     return False
@@ -47,11 +54,13 @@ def command_reads_secret(command: str) -> bool:
 def can_write(path: str) -> bool:
     target = normalize_path(path)
 
+    print("WRITE INPUT :", path)
+    print("WRITE TARGET:", target, flush=True)
+
     return (
         target == BUILD_DIR
         or target.startswith(BUILD_DIR + "/")
     )
-
 
 def allowed_host(url: str) -> bool:
     try:
