@@ -3,8 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from guard_utils import (
-    extract_paths,
-    is_secret,
+    command_reads_secret,
     can_write,
     allowed_host,
 )
@@ -46,7 +45,6 @@ def guard(req: Request):
         if req.command is None:
             return block("Missing command.")
 
-        from guard_utils import command_reads_secret
         if command_reads_secret(req.command):
             return block(
                 "Reading service-account.json is forbidden."
