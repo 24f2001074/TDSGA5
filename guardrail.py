@@ -25,6 +25,7 @@ class Request(BaseModel):
 
 
 def block(reason):
+    print(f"❌ BLOCK: {reason}", flush=True)
     return {
         "decision": "block",
         "reason": reason,
@@ -32,6 +33,7 @@ def block(reason):
 
 
 def allow(reason):
+    print(f"✅ ALLOW: {reason}", flush=True)
     return {
         "decision": "allow",
         "reason": reason,

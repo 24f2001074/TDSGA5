@@ -33,16 +33,12 @@ def command_reads_secret(command: str) -> bool:
     cmd = os.path.expandvars(command)
     cmd = os.path.expanduser(cmd)
 
-    # direct path anywhere
+    # Direct secret path
     if SECRET in cmd:
         return True
 
-    # encoded path
+    # Base64 encoded secret path
     if SECRET_B64 in cmd:
-        return True
-
-    # relative traversal mention
-    if "service-account.json" in cmd:
         return True
 
     return False
