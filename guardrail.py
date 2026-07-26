@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
+import json
 
 from guard_utils import (
     command_reads_secret,
@@ -39,7 +40,9 @@ def allow(reason):
 
 @router.post("/guardrail")
 def guard(req: Request):
-
+    print("=" * 60)
+    print(json.dumps(req.model_dump(), indent=2))
+    print("=" * 60, flush=True)
     if req.tool == "bash":
 
         if req.command is None:
