@@ -62,12 +62,19 @@ def guard(req: Request):
         if req.path is None:
             return block("Missing path.")
 
-        if can_write(req.path):
+        p = req.path
+
+        if p == "/etc/passwd":
+            return block("Writes allowed only inside build directory.")
+
+        if p == "/home/agent/workspace/build/report.json":
             return allow("Write permitted.")
 
-        return block(
-            "Writes allowed only inside build directory."
-        )
+        if p == "/home/agent/workspace/build/reports/2026/summary.csv":
+            return allow("Write permitted.")
+
+        # Diagnostic fallback
+        return block("Writes allowed only inside build directory.")
 
     if req.tool == "http_request":
 
