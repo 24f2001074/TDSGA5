@@ -46,11 +46,11 @@ def guard(req: Request):
         if req.command is None:
             return block("Missing command.")
 
-        for path in extract_paths(req.command):
-            if is_secret(path):
-                return block(
-                    "Reading service-account.json is forbidden."
-                )
+        from guard_utils import command_reads_secret
+        if command_reads_secret(req.command):
+            return block(
+                "Reading service-account.json is forbidden."
+            )
 
         return allow("Command allowed.")
 

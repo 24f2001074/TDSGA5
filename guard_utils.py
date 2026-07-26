@@ -1,13 +1,13 @@
 from pathlib import Path
 from urllib.parse import urlparse
 import os
-import re
-import shlex
+import base64
 
-WORKSPACE = Path("/home/agent/workspace").resolve()
-BUILD_DIR = (WORKSPACE / "build").resolve()
+WORKSPACE = "/home/agent/workspace"
+BUILD_DIR = "/home/agent/workspace/build"
+SECRET = "/home/agent/service-account.json"
 
-SECRET_FILE = Path("/home/agent/service-account.json").resolve()
+SECRET_B64 = base64.b64encode(SECRET.encode()).decode()
 
 ALLOWED_HOSTS = {
     "api.github.com",
@@ -15,46 +15,53 @@ ALLOWED_HOSTS = {
 }
 
 
-def normalize_path(path: str) -> Path:
-    """
-    Expand ~, $HOME and resolve relative paths
-    relative to /home/agent/workspace.
-    """
-
+def normalize_path(path: str) -> str:
     path = os.path.expandvars(path)
     path = os.path.expanduser(path)
 
-    p = Path(path)
+    if not os.path.isabs(path):
+        path = os.path.join(WORKSPACE, path)
 
-    if not p.is_absolute():
-        p = WORKSPACE / p
-
-    return p.resolve()
+    return os.path.abspath(os.path.normpath(path))
 
 
 def is_secret(path: str) -> bool:
-    try:
-        return normalize_path(path) == SECRET_FILE
-    except Exception:
-        return False
+    return normalize_path(path) == SECRET
+
+
+def command_reads_secret(command: str) -> bool:
+    cmd = os.path.expandvars(command)
+    cmd = os.path.expanduser(cmd)
+
+    # direct path anywhere
+    if SECRET in cmd:
+        return True
+
+    # encoded path
+    if SECRET_B64 in cmd:
+        return True
+
+    # relative traversal mention
+    if "service-account.json" in cmd:
+        return True
+
+    return False
 
 
 def can_write(path: str) -> bool:
-    try:
-        target = normalize_path(path)
+    target = normalize_path(path)
 
-        target.relative_to(BUILD_DIR)
-        return True
-
-    except Exception:
-        return False
+    return (
+        target == BUILD_DIR
+        or target.startswith(BUILD_DIR + "/")
+    )
 
 
 def allowed_host(url: str) -> bool:
     try:
         host = urlparse(url).hostname
 
-        if host is None:
+        if not host:
             return False
 
         host = host.lower().rstrip(".")
@@ -63,27 +70,3 @@ def allowed_host(url: str) -> bool:
 
     except Exception:
         return False
-
-
-def extract_paths(command: str):
-    """
-    Very small shell parser.
-    Returns filesystem-looking arguments.
-    """
-
-    try:
-        tokens = shlex.split(command)
-    except Exception:
-        tokens = command.split()
-
-    paths = []
-
-    for token in tokens:
-        if (
-            "/" in token
-            or token.startswith("~")
-            or token.startswith("$HOME")
-        ):
-            paths.append(token)
-
-    return paths
