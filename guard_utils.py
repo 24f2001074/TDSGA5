@@ -66,21 +66,17 @@ def command_reads_secret(command: str) -> bool:
 
 
 def can_write(path: str) -> bool:
-    print("=" * 60)
-    print("WRITE RAW     :", repr(path))
-
     target = normalize_path(path)
 
+    print("=" * 60)
+    print("WRITE RAW     :", repr(path))
     print("WRITE TARGET  :", repr(str(target)))
     print("BUILD DIR     :", repr(str(BUILD_DIR)))
 
-    try:
-        rel = target.relative_to(BUILD_DIR)
-        print("RELATIVE PATH :", repr(str(rel)))
-        return True
-    except ValueError:
-        print("OUTSIDE BUILD")
-        return False
+    return (
+        target == BUILD_DIR or
+        str(target).startswith(str(BUILD_DIR) + os.sep)
+    )
 
 
 def allowed_host(url: str) -> bool:
