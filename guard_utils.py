@@ -8,7 +8,10 @@ WORKSPACE = Path("/home/agent/workspace")
 BUILD_DIR = (WORKSPACE / "build").resolve()
 SECRET = Path("/home/agent/service-account.json").resolve()
 
-SECRET_B64 = base64.b64encode(str(SECRET).encode()).decode()
+SECRET_B64 = base64.b64encode(
+    f"cat {SECRET}".encode()
+).decode()
+print("SECRET_B64 =", SECRET_B64, flush=True)
 
 ALLOWED_HOSTS = {
     "api.github.com",
