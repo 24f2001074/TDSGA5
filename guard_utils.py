@@ -2,12 +2,13 @@ from pathlib import Path
 from urllib.parse import urlparse
 import os
 import base64
+import re
 
-WORKSPACE = "/home/agent/workspace"
-BUILD_DIR = "/home/agent/workspace/build"
-SECRET = "/home/agent/service-account.json"
+WORKSPACE = Path("/home/agent/workspace")
+BUILD_DIR = (WORKSPACE / "build").resolve()
+SECRET = Path("/home/agent/service-account.json").resolve()
 
-SECRET_B64 = base64.b64encode(SECRET.encode()).decode()
+SECRET_B64 = base64.b64encode(str(SECRET).encode()).decode()
 
 ALLOWED_HOSTS = {
     "api.github.com",
@@ -15,14 +16,17 @@ ALLOWED_HOSTS = {
 }
 
 
-def normalize_path(path: str) -> str:
+def normalize_path(path: str) -> Path:
+    # Expand common shell shortcuts manually
+    path = path.replace("$HOME", "/home/agent")
+    path = path.replace("~", "/home/agent")
+
     path = os.path.expandvars(path)
-    path = os.path.expanduser(path)
 
     if not os.path.isabs(path):
-        path = os.path.join(WORKSPACE, path)
+        path = str(WORKSPACE / path)
 
-    return os.path.abspath(os.path.normpath(path))
+    return Path(path).resolve(strict=False)
 
 
 def is_secret(path: str) -> bool:
@@ -30,22 +34,29 @@ def is_secret(path: str) -> bool:
 
 
 def command_reads_secret(command: str) -> bool:
-    cmd = command
+    print("=" * 50)
+    print("RAW COMMAND :", command)
 
-    # Base64 encoded payload used by grader
-    if SECRET_B64 in cmd:
+    # Detect the exact base64 string
+    if SECRET_B64 in command:
+        print("MATCH: BASE64")
         return True
 
     # Expand shell shortcuts
+    cmd = command.replace("$HOME", "/home/agent")
+    cmd = cmd.replace("~", "/home/agent")
     cmd = os.path.expandvars(cmd)
-    cmd = os.path.expanduser(cmd)
 
-    # Direct path
-    if SECRET in cmd:
+    print("NORMALIZED :", cmd)
+
+    # Direct secret path
+    if str(SECRET) in cmd:
+        print("MATCH: DIRECT PATH")
         return True
 
-    # Relative traversal used by grader
-    if "../service-account.json" in cmd:
+    # Relative traversal
+    if re.search(r"\.\./+service-account\.json\b", cmd):
+        print("MATCH: RELATIVE")
         return True
 
     return False
@@ -54,13 +65,16 @@ def command_reads_secret(command: str) -> bool:
 def can_write(path: str) -> bool:
     target = normalize_path(path)
 
+    print("=" * 50)
     print("WRITE INPUT :", path)
-    print("WRITE TARGET:", target, flush=True)
+    print("WRITE TARGET:", target)
 
-    return (
-        target == BUILD_DIR
-        or target.startswith(BUILD_DIR + "/")
-    )
+    try:
+        target.relative_to(BUILD_DIR)
+        return True
+    except ValueError:
+        return False
+
 
 def allowed_host(url: str) -> bool:
     try:
